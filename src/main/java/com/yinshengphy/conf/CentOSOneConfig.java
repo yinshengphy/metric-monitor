@@ -4,7 +4,11 @@ import ch.ethz.ssh2.Connection;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
 import org.springframework.util.ResourceUtils;
+
+import java.io.*;
 
 @Configuration
 public class CentOSOneConfig
@@ -24,8 +28,14 @@ public class CentOSOneConfig
     {
         Connection connection = new Connection(host);
         connection.connect();
+//        System.out.println(new ClassPathResource(privateKeyPath).getInputStream().read());
+        Reader reader = new InputStreamReader(new ClassPathResource(privateKeyPath).getInputStream());
+        StringBuilder builder = new StringBuilder();
+        int ch;
+        while ((ch = reader.read()) != -1)
+            builder.append((char) ch);
 
-        connection.authenticateWithPublicKey(user, ResourceUtils.getFile("classpath:" + privateKeyPath), null);
+        connection.authenticateWithPublicKey(user, builder.toString().toCharArray(), null);
         return connection;
     }
 }
