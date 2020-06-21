@@ -1,0 +1,46 @@
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: java
+spec:
+  redirectScheme:
+    scheme: https
+
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: metrics-webui
+  namespace: java
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`metrics.yinsheng.studio`)
+      kind: Rule
+      services:
+        - name: monitor
+          port: 80
+      middlewares:
+        - name: redirect-https
+
+---
+
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: metrics-webui-tls
+  namespace: java
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`metrics.yinsheng.studio`)
+      kind: Rule
+      services:
+        - name: monitor
+          port: 80
+  tls:
+    certResolver: myresolver

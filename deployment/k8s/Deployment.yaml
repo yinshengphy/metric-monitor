@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-monitor
+  namespace: java
+  labels:
+    app: monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitor
+  template:
+    metadata:
+      labels:
+        app: monitor
+    spec:
+      containers:
+        - name: metrics-monitor
+          image: metrics-monitor
+          ports:
+            - containerPort: 80
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: monitor
+  namespace: java
+spec:
+  selector:
+    app: monitor
+  ports:
+    - protocol: TCP
+      port: 80
