@@ -1,13 +1,13 @@
 #监控服务器连接配置信息
 bdyum:
-  host: 106.12.89.13
+  host: xx.xx.xx.xx
   port: 22
   user: root
   private-key-path: id_rsa
 
 spring:
   redis:
-    host: 106.12.89.13
+    host: xx.xx.xx.xx
     port: 6379
 server:
   port: 80
