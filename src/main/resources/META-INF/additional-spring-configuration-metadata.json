@@ -1,0 +1,34 @@
+{
+  "properties": [
+    {
+      "name": "bdyum.host",
+      "type": "java.lang.String",
+      "description": "Description for bdyum.host."
+    },
+    {
+      "name": "bdyum.port",
+      "type": "java.lang.String",
+      "description": "Description for bdyum.port."
+    },
+    {
+      "name": "bdyum.user",
+      "type": "java.lang.String",
+      "description": "Description for bdyum.user."
+    },
+    {
+      "name": "bdyum.private-key-path",
+      "type": "java.lang.String",
+      "description": "Description for bdyum.private-key-path."
+    },
+    {
+      "name": "monitor.ports-config",
+      "type": "java.lang.String",
+      "description": "Description for monitor.ports-config."
+    },
+    {
+      "name": "monitor.prosName-config",
+      "type": "java.lang.String",
+      "description": "Description for monitor.prosName-config."
+    }
+  ]
+}
