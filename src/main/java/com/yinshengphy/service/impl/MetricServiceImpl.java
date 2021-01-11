@@ -42,10 +42,8 @@ public class MetricServiceImpl implements MetricService
         redisTemplate.setKeySerializer(new StringRedisSerializer());
         ValueOperations<String, String> ops = redisTemplate.opsForValue();
 
-        Map<String, Map<String, String>> metricInfo = metricDao.getMetricInfo();
-        metricInfo.put("ports", metricDao.getPortConnectNum(ports));
-        map.put("sysInfo", metricInfo);
-        map.put("procInfo", metricDao.getMetricInfo(prosNames));
+        Map<String, Map<String, Map<String, String>>> metricInfo = metricDao.getMetricInfo();
+
 
         ops.set(format.format(new Date()), JSONObject.toJSONString(map));
     }

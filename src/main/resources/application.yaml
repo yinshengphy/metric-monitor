@@ -1,15 +1,19 @@
 #监控服务器连接配置信息 xx.xx.xx.xx
-
-bdyum:
-  host: xx.xx.xx.xx
-  port: 22
-  user: root
-  private-key-path: id_rsa
+instances:
+  configs:
+    - host: 106.
+      user: root
+      passwd: id_rsa
+    - host: 106.
+      user: root
+      passwd: id_rs
 
 spring:
+  datasource:
+    driver-class-name:
   redis:
-    host: xx.xx.xx.xx
+    host: 106.
     port: 6379
-    password: xxxx
+    password: xxxxx
 server:
   port: 80

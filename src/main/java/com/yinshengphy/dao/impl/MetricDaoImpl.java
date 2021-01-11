@@ -3,88 +3,92 @@ package com.yinshengphy.dao.impl;
 import ch.ethz.ssh2.ChannelCondition;
 import ch.ethz.ssh2.Connection;
 import ch.ethz.ssh2.Session;
+import com.alibaba.fastjson.JSONObject;
 import com.yinshengphy.dao.MetricDao;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
+import com.yinshengphy.po.InstancePo;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
-import java.io.*;
-import java.util.Arrays;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-@Component
+@ConfigurationProperties(prefix = "instances")
+@Configuration
 public class MetricDaoImpl implements MetricDao
 {
-    @Autowired
-    private Connection connection;
-
-    //查询指定进程CPU内存信息
-    public Map<String, Map<String, String>> getMetricInfo(String[] names)
-    {
-        StringBuilder builder = new StringBuilder();
-        Arrays.stream(names).forEach(n -> builder.append(execShell("ps -aux|grep " + n + "|grep -v grep|awk " +
-                "'{print$11,$3,$4}'")));
-
-        String[] lines = builder.toString().split(System.lineSeparator());
-
-        Map<String, Map<String, String>> map = new HashMap<>();
-
-        Arrays.stream(lines).forEach(n ->
-        {
-            Map<String, String> metricMap = new HashMap<>();
-            String[] items = n.split(" ");
-            metricMap.put("cpu", items[1]);
-            metricMap.put("mem", items[2]);
-            map.put(items[0], metricMap);
-        });
-
-        return map;
-    }
+    @Setter
+    private List<InstancePo> configs;
 
     //查询服务器cpu，内存，磁盘信息
-    public Map<String, Map<String, String>> getMetricInfo()
+    public Map<String, Map<String, Map<String, String>>> getMetricInfo()
     {
-        Map<String, Map<String, String>> map = new HashMap<>();
-        //获取用户CPU使用率 用户，系统
-        Map<String, String> cpuMap = new HashMap<>();
-        String cpuInfoCommand = "export TERM=dumb && top -bn 1 |grep Cpu|awk '{print$2,$4}'";
-        String[] cpuItems = execShell(cpuInfoCommand).split(" ");
-        cpuMap.put("user", cpuItems[0].trim());
-        cpuMap.put("sys", cpuItems[1].trim());
-        map.put("cpu", cpuMap);
+        Map<String, Map<String, Map<String, String>>> ipMaps = new HashMap<>();
 
-        //获取内存使用 total，used
-        Map<String, String> memMap = new HashMap<>();
-        String memInfoCommand = "free -h|grep Mem|awk '{print$2,$3}'";
-        String[] memItems = execShell(memInfoCommand).split(" ");
-        memMap.put("total", memItems[0].trim());
-        memMap.put("used", memItems[1].trim());
-        map.put("mem", memMap);
+        for (InstancePo n : configs)
+        {
+            Connection connection = n.getConnection();
 
-        //获取磁盘使用
-        Map<String, String> diskMap = new HashMap<>();
-        String diskInfoCommand = "df -P|grep /dev| awk '{total += $2;used += $3};END {print total,used}'";
-        String[] diskItems = execShell(diskInfoCommand).split(" ");
-        diskMap.put("total", diskItems[0].trim());
-        diskMap.put("used", diskItems[1].trim());
-        map.put("disk", diskMap);
+            Map<String, Map<String, String>> metricMap = new HashMap<>();
+            //获取用户CPU使用率 用户，系统
+            Map<String, String> cpuMap = new HashMap<>();
+            String cpuInfoCommand = "export TERM=dumb && top -bn 1 |grep Cpu|awk '{print$2,$4}'";
+            String[] cpuItems = execShell(connection, cpuInfoCommand).split(" ");
+            cpuMap.put("user", cpuItems[0].trim());
+            cpuMap.put("sys", cpuItems[1].trim());
+            metricMap.put("cpu", cpuMap);
 
-        return map;
-    }
+            //获取内存使用 total，used
+            Map<String, String> memMap = new HashMap<>();
+            String memInfoCommand = "free -h|grep Mem|awk '{print$2,$3/$2*100\"%\"}'";
+            String[] memItems = execShell(connection, memInfoCommand).split(" ");
+            memMap.put("total", memItems[0].trim());
+            memMap.put("percentage", memItems[1].trim());
+            metricMap.put("mem", memMap);
 
-    //获取配置端口连接数
-    public Map<String, String> getPortConnectNum(String[] ports)
-    {
-        return Arrays.stream(ports).collect(Collectors.toMap(n -> n, n -> execShell("netstat -aln |grep ':" + n + " " +
-                "'|grep" +
-                " " +
-                "ESTABLISHED|wc -l").trim()));
+            //获取磁盘使用
+            Map<String, String> diskMap = new HashMap<>();
+            String diskInfoCommand = "df -P|grep /dev/sdb1| awk '{total += $2;used += $3;percentage=used/total*100\"%\"};END " +
+                    "{print total,percentage}'";
+            String[] diskItems = execShell(connection, diskInfoCommand).split(" ");
+            diskMap.put("total", diskItems[0].trim());
+            diskMap.put("percentage", diskItems[1].trim());
+            metricMap.put("disk", diskMap);
 
+            //获取语义平台接口工作状态
+            Map<String, String> interfaceMap = new HashMap<>();
+            String interfaceInfoCommand = "curl --header \"Content-Type:application/json\" 'http://localhost:8082/nlu_service_interface/get_interface?userid=123456&question=%E5%BC%80%E9%80%9A%E5%9B%BD%E9%99%85%E6%BC%AB%E6%B8%B8%E6%B5%81%E9%87%8F%E5%8C%85&business=SHDX&uuid=1232323&function=3'";
+            long startTime = System.currentTimeMillis();
+            String result = execShell(connection, interfaceInfoCommand);
+            long endTime = System.currentTimeMillis();
+            interfaceMap.put("timeSpend", String.valueOf((endTime - startTime) / 1000));
+            try
+            {
+                JSONObject jsonObject = JSONObject.parseObject(result);
+                if (jsonObject.getJSONArray("answers").size() != 0)
+                    interfaceMap.put("available", "true");
+                else
+                    interfaceMap.put("available", "false");
+            } catch (Exception e)
+            {
+                interfaceMap.put("available", "false");
+            }
+
+            metricMap.put("interface", interfaceMap);
+
+            ipMaps.put(n.getHost(), metricMap);
+        }
+
+        return ipMaps;
     }
 
     //    执行linux命令
-    private String execShell(String command)
+    private String execShell(Connection connection, String command)
     {
         Session session;
         try
@@ -93,7 +97,7 @@ public class MetricDaoImpl implements MetricDao
         } catch (IOException e)
         {
             e.printStackTrace();
-            return null;
+            return "";
         }
         InputStream inputStream = session.getStdout();
         try
